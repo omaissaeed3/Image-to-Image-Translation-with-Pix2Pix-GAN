@@ -28,3 +28,51 @@ plt.axis("off")
 plt.show()
 
 
+class Generator(nn.Module):
+    def __init__(self):
+        super(Generator, self).__init__()
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),   # 256 → 128
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1), # 128 → 64
+            nn.ReLU()
+        )
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),  # 64 → 128
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, 3, kernel_size=4, stride=2, padding=1),    # 128 → 256
+            nn.Tanh()
+        )
+
+    def forward(self, x):
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
+
+
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=4, stride=2, padding=1),   # 256 → 128
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),  # 128 → 64
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 256, kernel_size=4, stride=2, padding=1), # 64 → 32
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2),
+            nn.AdaptiveAvgPool2d((1, 1))  
+        )
+        self.fc = nn.Linear(256, 1)
+
+    def forward(self, x):
+        x = self.features(x)            # [B, 256, 1, 1]
+        x = torch.flatten(x, 1)         # [B, 256]
+        x = self.fc(x)                  # [B, 1]
+        x = torch.sigmoid(x)           # Output between 0 and 1
+        return x
+
+
+G_sat2map = Generator()
+D_map = Discriminator()
